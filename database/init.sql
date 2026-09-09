@@ -69,14 +69,11 @@ CREATE TABLE IF NOT EXISTS tire_tests (
     test_no VARCHAR(50),
     hafta VARCHAR(20),                       -- Test haftası (örn: 2026-W27)
     yuk_agirligi VARCHAR(50),
-    ilk_takilma_tarihi DATE,               -- İlk lastik takılma tarihi
-    baslangic_km VARCHAR(50),              -- Başlangıç kilometresi
     montaj_pozisyonu JSONB DEFAULT '[]',     -- Sol/Sağ S1-S9, D1-D9 seçilen pozisyonlar
     items JSONB DEFAULT '[]',                -- [{pozisyon, lastik_id, ebat, desen, hatta_kodu, seri_numarasi}, ...]
     measurements JSONB DEFAULT '[]',         -- [{tarih, km, desen, orj_dis_derinligi, olculen_psi:[..], onerilen_psi:{f,d,t}, sicak, soguk}, ...]
     file_path VARCHAR(500),                  -- Taranmış kağıt / ek fotoğraf (PDF veya görsel)
     notlar TEXT,
-    stencil_no VARCHAR(50),                  -- Test formunun takip/stensil numarası
     created_by INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -96,22 +93,7 @@ INSERT INTO categories (category_name, description) VALUES
     ('Tork Değerleri', 'Lastik/jant montaj tork tabloları'),
     ('Basınç Tabloları', 'Araç tipine göre hava basıncı standartları'),
     ('Arıza Çözümleri', 'Sık karşılaşılan sahra arızaları ve çözüm adımları'),
-    ('Garanti Prosedürleri', 'Garanti ön değerlendirme kriterleri'),
-    ('Diğer', 'Yukarıdaki kategorilere uymayan belgeler'),
-    ('Montaj Talimatları', 'Lastik/jant sökme-takma adım adım talimatları'),
-    ('Bakım ve Rotasyon', 'Periyodik bakım ve lastik rotasyon planları'),
-    ('Kalite Standartları', 'Üretim ve saha kalite kriterleri'),
-    ('Ürün Katalogları', 'Lastik modelleri, desen ve ebat kataloğu'),
-    ('Sertifikalar', 'ISO, TSE ve diğer uygunluk sertifikaları'),
-    ('Eğitim Materyalleri', 'Personel ve bayi eğitim dokümanları'),
-    ('İş Güvenliği', 'Sahada ve teknik serviste iş güvenliği talimatları'),
-    ('Şikayet ve Geri Bildirim', 'Müşteri şikayet değerlendirme süreçleri'),
-    ('Lojistik ve Sevkiyat', 'Depo, sevkiyat ve teslimat prosedürleri'),
-    ('Fiyat ve Teklif Listeleri', 'Güncel fiyat listeleri ve teklif şablonları'),
-    ('Saha Raporlama', 'Saha mühendisliği periyodik rapor şablonları'),
-    ('Teknik Servis Prosedürleri', 'Kabul/ret değerlendirme ve servis akışları'),
-    ('Sözleşme ve Anlaşmalar', 'Bayi/müşteri sözleşme örnekleri'),
-    ('Duyurular', 'Şirket içi duyurular ve güncellemeler')
+    ('Garanti Prosedürleri', 'Garanti ön değerlendirme kriterleri')
 ON CONFLICT (category_name) DO NOTHING;
 
 -- NOT: Varsayılan admin kullanıcısı backend ilk açılışta seed script ile (bcrypt hash'i ile) oluşturulur.
@@ -154,89 +136,3 @@ VALUES
     'Örnek doldurulmuş referans kayıt.'
 )
 ON CONFLICT DO NOTHING;
-
--- ============================================================================
--- v2: Esnek rol/yetki sistemi, hata kodları, kabul/ret modülü, çoklu dosya ekleri,
--- belge görünürlük ayarları. (Aynı içerik database/migration_v2.sql'de de var;
--- mevcut bir veritabanını güncellemek için o dosyayı çalıştırın.)
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS permissions (
-    perm_key VARCHAR(60) PRIMARY KEY,
-    description TEXT
-);
-
-CREATE TABLE IF NOT EXISTS role_permissions (
-    role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    perm_key VARCHAR(60) NOT NULL REFERENCES permissions(perm_key) ON DELETE CASCADE,
-    PRIMARY KEY (role_id, perm_key)
-);
-
-INSERT INTO permissions (perm_key, description) VALUES
-    ('VIEW_DOCUMENTS', 'Teknik dokümanları görüntüleme ve arama'),
-    ('CREATE_DOCUMENTS', 'Doküman ekleme, düzenleme, silme'),
-    ('VIEW_TIRE_TESTS', 'Saha mühendisliği takip kartlarını görüntüleme'),
-    ('CREATE_TIRE_TESTS', 'Saha mühendisliği takip kartı ekleme/düzenleme'),
-    ('VIEW_KABUL_RET', 'Teknik servis kabul/ret kayıtlarını görüntüleme'),
-    ('CREATE_KABUL_RET', 'Teknik servis kabul/ret kaydı oluşturma/düzenleme')
-ON CONFLICT (perm_key) DO NOTHING;
-
-INSERT INTO role_permissions (role_id, perm_key)
-SELECT r.id, p.perm_key FROM roles r CROSS JOIN permissions p WHERE r.role_name = 'PERSONEL'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO role_permissions (role_id, perm_key)
-SELECT r.id, p.perm_key FROM roles r CROSS JOIN permissions p
-WHERE r.role_name = 'STAJYER' AND p.perm_key IN ('VIEW_DOCUMENTS', 'VIEW_TIRE_TESTS', 'VIEW_KABUL_RET')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO role_permissions (role_id, perm_key)
-SELECT r.id, p.perm_key FROM roles r CROSS JOIN permissions p WHERE r.role_name = 'ADMIN'
-ON CONFLICT DO NOTHING;
-
-CREATE TABLE IF NOT EXISTS error_codes (
-    id SERIAL PRIMARY KEY,
-    code VARCHAR(50) UNIQUE NOT NULL,
-    description TEXT,
-    created_by INTEGER REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
-ALTER TABLE tire_tests ADD COLUMN IF NOT EXISTS hata_kodu VARCHAR(100);
-CREATE INDEX IF NOT EXISTS idx_tire_tests_hata_kodu ON tire_tests (hata_kodu);
-
-CREATE TABLE IF NOT EXISTS kabul_ret (
-    id SERIAL PRIMARY KEY,
-    lastik_seri_no VARCHAR(100),
-    lastik_ebat VARCHAR(100),
-    musteri VARCHAR(150),
-    hata_kodu VARCHAR(100),
-    karar VARCHAR(15) NOT NULL DEFAULT 'BEKLEMEDE',
-    aciklama TEXT,
-    created_by INTEGER REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_kabul_ret_hata_kodu ON kabul_ret (hata_kodu);
-CREATE INDEX IF NOT EXISTS idx_kabul_ret_search ON kabul_ret
-    USING gin (to_tsvector('simple', coalesce(lastik_seri_no,'') || ' ' || coalesce(musteri,'') || ' ' || coalesce(aciklama,'')));
-
-CREATE TABLE IF NOT EXISTS attachments (
-    id SERIAL PRIMARY KEY,
-    owner_type VARCHAR(20) NOT NULL,
-    owner_id INTEGER NOT NULL,
-    file_path VARCHAR(500) NOT NULL,
-    original_name VARCHAR(255),
-    mime_type VARCHAR(100),
-    uploaded_by INTEGER REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_attachments_owner ON attachments (owner_type, owner_id);
-
-ALTER TABLE guides ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT TRUE;
-
-CREATE TABLE IF NOT EXISTS guide_role_access (
-    guide_id INTEGER NOT NULL REFERENCES guides(id) ON DELETE CASCADE,
-    role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    PRIMARY KEY (guide_id, role_id)
-);
