@@ -1,0 +1,77 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: petlas_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: petlas_saha_kb
+      POSTGRES_USER: petlas_admin
+      POSTGRES_PASSWORD: change_me_strong_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - petlas_db_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U petlas_admin -d petlas_saha_kb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: petlas_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: petlas_saha_kb
+      DB_USER: petlas_admin
+      DB_PASSWORD: change_me_strong_password
+      JWT_SECRET: change_me_super_secret_key_min_32_chars
+      JWT_EXPIRES_IN: 8h
+      JWT_REFRESH_SECRET: change_me_another_super_secret_key
+      JWT_REFRESH_EXPIRES_IN: 7d
+      SEED_ADMIN_USERNAME: admin
+      SEED_ADMIN_EMAIL: admin@petlas.com
+      SEED_ADMIN_PASSWORD: ChangeThisPassword123!
+      # Şifremi Unuttum e-postası için SMTP (boş bırakılırsa link backend loglarında görünür, gerçek mail gitmez)
+      SMTP_HOST: ""
+      SMTP_PORT: "587"
+      SMTP_USER: ""
+      SMTP_PASS: ""
+      SMTP_FROM: "Petlas Saha KB <noreply@petlas.com>"
+      APP_URL: "http://localhost:8080"
+    ports:
+      - "4000:4000"
+    volumes:
+      - petlas_uploads:/app/uploads
+
+  frontend:
+    build: ./frontend
+    container_name: petlas_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+  adminer:
+    image: adminer:latest
+    container_name: petlas_adminer
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "8081:8080"
+
+volumes:
+  petlas_db_data:
+  petlas_uploads:
