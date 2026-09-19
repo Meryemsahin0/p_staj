@@ -3,8 +3,12 @@
     <router-link to="/lastik-testleri" class="text-sm text-petlas-blue hover:underline">&larr; Listeye dön</router-link>
 
     <div class="bg-white rounded-lg shadow mt-4 overflow-hidden">
-      <div class="bg-petlas-navy border-b-4 border-petlas-red px-6 py-4">
+      <div class="bg-petlas-navy border-b-4 border-petlas-red px-6 py-4 flex items-center justify-between gap-3">
         <h1 class="text-white text-xl font-bold">{{ isNew ? 'Yeni Lastik Test Formu' : (canEdit ? 'Formu Düzenle' : 'Test Formu Detayı') }}</h1>
+        <span v-if="!isNew" class="text-xs font-semibold px-2 py-1 rounded"
+          :class="form.durum === 'SONLANDIRILDI' ? 'bg-slate-200 text-slate-700' : 'bg-green-100 text-green-700'">
+          {{ form.durum === 'SONLANDIRILDI' ? 'Sonlandırıldı' : 'Aktif' }}
+        </span>
       </div>
 
       <form @submit.prevent="submitForm" class="p-6 space-y-6">
@@ -29,6 +33,12 @@
               <input v-model="form.il" :disabled="!canEdit" list="dl-il" @input="filtreleIl" placeholder="Örn: Kırşehir"
                 class="w-full border border-slate-300 rounded px-3 py-2 disabled:bg-slate-100" />
               <datalist id="dl-il"><option v-for="il in ilOnerileri" :key="il" :value="il" /></datalist>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">İletişim Numarası</label>
+              <input v-model="form.iletisimNo" :disabled="!canEdit" placeholder="Örn: 0532 000 00 00"
+                class="w-full border border-slate-300 rounded px-3 py-2 disabled:bg-slate-100" />
+              <p class="text-[11px] text-slate-400 mt-0.5">Bu araç hakkında bilgi almak için aranabilecek numara.</p>
             </div>
             <div>
               <label class="block text-xs font-medium text-slate-600 mb-1">Araç Cinsi</label>
@@ -163,8 +173,18 @@
                 <tr v-for="(item, i) in form.items" :key="i" class="border-b border-slate-100">
                   <td class="py-1 pr-2"><input v-model="item.pozisyon" :disabled="!canEdit" placeholder="S1" class="w-14 border border-slate-300 rounded px-1 py-1 disabled:bg-slate-100" /></td>
                   <td class="py-1 pr-2"><input v-model="item.lastik_id" :disabled="!canEdit" class="w-32 border border-slate-300 rounded px-1 py-1 disabled:bg-slate-100 font-mono text-[11px]" /></td>
-                  <td class="py-1 pr-2"><input v-model="item.ebat" :disabled="!canEdit" placeholder="385/65 R22.5" class="w-24 border border-slate-300 rounded px-1 py-1 disabled:bg-slate-100" /></td>
-                  <td class="py-1 pr-2"><input v-model="item.desen" :disabled="!canEdit" placeholder="NH200" class="w-16 border border-slate-300 rounded px-1 py-1 disabled:bg-slate-100" /></td>
+                  <td class="py-1 pr-2">
+                    <input v-model="item.ebat" :disabled="!canEdit" :list="'dl-ebat-' + i" placeholder="385/65 R22.5"
+                      @input="onItemAutoInput('ebat', item.ebat)" @focus="onItemAutoFocus('ebat')"
+                      class="w-24 border border-slate-300 rounded px-1 py-1 disabled:bg-slate-100" />
+                    <datalist :id="'dl-ebat-' + i"><option v-for="v in itemSuggestions.ebat" :key="v" :value="v" /></datalist>
+                  </td>
+                  <td class="py-1 pr-2">
+                    <input v-model="item.desen" :disabled="!canEdit" :list="'dl-desen-' + i" placeholder="NH200"
+                      @input="onItemAutoInput('desen', item.desen)" @focus="onItemAutoFocus('desen')"
+                      class="w-16 border border-slate-300 rounded px-1 py-1 disabled:bg-slate-100" />
+                    <datalist :id="'dl-desen-' + i"><option v-for="v in itemSuggestions.desen" :key="v" :value="v" /></datalist>
+                  </td>
                   <td class="py-1 pr-2"><input v-model="item.hafta" :disabled="!canEdit" class="w-16 border border-slate-300 rounded px-1 py-1 disabled:bg-slate-100" /></td>
                   <td class="py-1 pr-2"><input v-model="item.seri_numarasi" :disabled="!canEdit" class="w-24 border border-slate-300 rounded px-1 py-1 disabled:bg-slate-100" /></td>
                   <td class="py-1 pr-2"><input v-model="item.orjDisDerinligi" :disabled="!canEdit" placeholder="örn: 18" class="w-16 border border-slate-300 rounded px-1 py-1 disabled:bg-slate-100" /></td>
@@ -176,16 +196,16 @@
           </div>
         </section>
 
-        <!-- Karışım -->
+        <!-- Özellik -->
         <section>
           <div class="flex items-center justify-between border-b border-slate-200 pb-1 mb-2">
-            <h2 class="text-sm font-bold text-petlas-navy uppercase tracking-wide">Karışım</h2>
-            <button v-if="canEdit" type="button" @click="addKarisim" class="text-xs text-petlas-blue hover:underline">+ Karışım Ekle</button>
+            <h2 class="text-sm font-bold text-petlas-navy uppercase tracking-wide">Özellik</h2>
+            <button v-if="canEdit" type="button" @click="addKarisim" class="text-xs text-petlas-blue hover:underline">+ Özellik Ekle</button>
           </div>
           <div v-for="(k, i) in form.karisimlar" :key="i" class="border border-slate-200 rounded p-3 mb-2">
             <div class="flex items-center justify-between gap-2 mb-2">
               <select v-model="k.karisimId" @change="onKarisimSecildi(k)" :disabled="!canEdit" class="flex-1 border border-slate-300 rounded px-2 py-1 text-sm disabled:bg-slate-100">
-                <option value="">Karışım seçin</option>
+                <option value="">Özellik seçin</option>
                 <option v-for="opt in karisimListesi" :key="opt.id" :value="opt.id">{{ opt.ad }}</option>
               </select>
               <button v-if="canEdit" type="button" @click="form.karisimlar.splice(i,1)" class="text-petlas-red text-xs">Sil</button>
@@ -200,8 +220,8 @@
               <p v-if="form.items.length === 0" class="text-[11px] text-slate-400">Önce lastik pozisyonu ekleyin.</p>
             </div>
           </div>
-          <p v-if="form.karisimlar.length === 0" class="text-slate-400 text-xs">Henüz karışım eklenmedi.</p>
-          <p class="text-[11px] text-slate-400 mt-1">Listede olmayan bir karışım gerekiyorsa, <router-link to="/karisimlar" class="text-petlas-blue hover:underline">Karışımlar</router-link> sayfasından (yetkiniz varsa) ekleyebilirsiniz.</p>
+          <p v-if="form.karisimlar.length === 0" class="text-slate-400 text-xs">Henüz özellik eklenmedi.</p>
+          <p class="text-[11px] text-slate-400 mt-1">Listede olmayan bir özellik gerekiyorsa, <router-link to="/yonetim" class="text-petlas-blue hover:underline">Yönetim Paneli</router-link> sayfasından (yetkiniz varsa) ekleyebilirsiniz.</p>
         </section>
 
         <!-- Kontrol Çizelgesi (Ölçümler) -->
@@ -250,17 +270,21 @@
                   <tr class="text-left text-slate-500 border-b">
                     <th class="py-1 pr-2">Pozisyon</th>
                     <th class="py-1 pr-2">Toplam KM</th>
-                    <th class="py-1 pr-2">Ölçülen PSI</th>
-                    <th class="py-1 pr-2" colspan="4">Ölçülen Diş Derinliği (4 nokta)</th>
+                    <th class="py-1 pr-1" colspan="4">Ölçülen Diş Derinliği (4 nokta)</th>
+                    <th class="py-1 pl-6">Ölçülen PSI</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(lo, j) in m.lastikOlcumleri" :key="j" class="border-b border-slate-100">
                     <td class="py-1 pr-2 font-medium">{{ lo.pozisyon }}</td>
                     <td class="py-1 pr-2 text-slate-500">{{ toplamKm(m, lo) }}</td>
-                    <td class="py-1 pr-2"><input v-model="lo.olculen_psi" :disabled="!canEdit" class="w-16 border border-slate-300 rounded px-1 py-1 disabled:bg-slate-100" /></td>
                     <td v-for="n in 4" :key="n" class="py-1 pr-1">
-                      <input v-model="lo.olculen_dis_derinlikleri[n-1]" :disabled="!canEdit" class="w-14 border border-slate-300 rounded px-1 py-1 disabled:bg-slate-100" />
+                      <input :id="`dis-${i}-${j}-${n}`" v-model="lo.olculen_dis_derinlikleri[n-1]" :disabled="!canEdit"
+                        @keydown.enter.prevent="onDisEnter(i, j, n)"
+                        class="w-14 border border-slate-300 rounded px-1 py-1 disabled:bg-slate-100" />
+                    </td>
+                    <td class="py-1 pl-6">
+                      <input v-model="lo.olculen_psi" :disabled="!canEdit" class="w-16 border border-slate-300 rounded px-1 py-1 disabled:bg-slate-100" />
                     </td>
                   </tr>
                   <tr v-if="!m.lastikOlcumleri || m.lastikOlcumleri.length === 0"><td colspan="7" class="text-slate-400 py-2">Bu ölçüm için lastik satırı yok.</td></tr>
@@ -279,7 +303,7 @@
 
         <!-- AI Yorumu -->
         <section v-if="form.measurements.length > 0">
-          <h2 class="text-sm font-bold text-petlas-navy uppercase tracking-wide mb-2 border-b border-slate-200 pb-1">🤖 AI Yorumu</h2>
+          <h2 class="text-sm font-bold text-petlas-navy uppercase tracking-wide mb-2 border-b border-slate-200 pb-1">AI Yorumu</h2>
           <div class="bg-blue-50 border-l-4 border-petlas-blue rounded p-3">
             <p class="text-sm text-slate-700 whitespace-pre-line">{{ aiYorumu }}</p>
           </div>
@@ -290,7 +314,7 @@
         <section>
           <div class="flex items-center gap-2 flex-wrap">
             <button type="button" @click="showTable = !showTable" class="bg-petlas-navy hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded transition-colors">
-              {{ showTable ? 'Tabloyu Gizle' : '📊 Tablolaştır' }}
+              {{ showTable ? 'Tabloyu Gizle' : 'Tablolaştır' }}
             </button>
             <button v-if="showTable" type="button" @click="downloadExcel" class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 py-2 rounded transition-colors">
               ⬇ Excel Olarak İndir
@@ -298,26 +322,47 @@
           </div>
 
           <div v-if="showTable" class="mt-3 overflow-x-auto">
-            <table class="w-full text-xs border border-slate-200">
-              <thead class="bg-slate-100">
-                <tr>
-                  <th class="text-left px-2 py-1 border-b">Tarih</th>
-                  <th class="text-left px-2 py-1 border-b">Pozisyon</th>
-                  <th class="text-left px-2 py-1 border-b">Ortalama Diş Derinliği</th>
-                  <th class="text-left px-2 py-1 border-b">PSI</th>
-                  <th class="text-left px-2 py-1 border-b">Toplam KM</th>
+            <table class="w-full text-xs border border-slate-200 border-collapse">
+              <thead>
+                <tr class="bg-petlas-navy text-white">
+                  <th rowspan="2" class="text-left px-2 py-1 border border-slate-300 align-bottom">Pozisyon</th>
+                  <th rowspan="2" class="text-left px-2 py-1 border border-slate-300 align-bottom">Ebat</th>
+                  <th rowspan="2" class="text-left px-2 py-1 border border-slate-300 align-bottom">Desen</th>
+                  <th rowspan="2" class="text-left px-2 py-1 border border-slate-300 align-bottom">Hafta</th>
+                  <th rowspan="2" class="text-left px-2 py-1 border border-slate-300 align-bottom">Seri No</th>
+                  <th v-for="m in siraliOlcumTablosu" :key="m.sira" colspan="5" class="text-center px-2 py-1 border border-slate-300">
+                    {{ m.sira }}. Ölçüm{{ m.tarih ? ' — ' + m.tarih : '' }}
+                    <div class="text-[10px] font-normal opacity-90">
+                      {{ m.olcenKisi ? 'Ölçen: ' + m.olcenKisi : '' }}{{ m.olcenKisi && m.olcumDurumu ? ' · ' : '' }}{{ m.olcumDurumu === 'SICAK' ? 'Sıcak' : (m.olcumDurumu === 'SOGUK' ? 'Soğuk' : '') }}
+                    </div>
+                  </th>
+                  <th v-if="siraliOlcumTablosu.length === 0" class="text-center px-2 py-1 border border-slate-300">Henüz ölçüm yok</th>
+                </tr>
+                <tr class="bg-slate-700 text-white">
+                  <template v-for="m in siraliOlcumTablosu" :key="'alt-' + m.sira">
+                    <th class="text-center px-1 py-1 border border-slate-300 font-normal">Diş 1</th>
+                    <th class="text-center px-1 py-1 border border-slate-300 font-normal">Diş 2</th>
+                    <th class="text-center px-1 py-1 border border-slate-300 font-normal">Diş 3</th>
+                    <th class="text-center px-1 py-1 border border-slate-300 font-normal">Diş 4</th>
+                    <th class="text-center px-1 py-1 border border-slate-300 font-normal">PSI</th>
+                  </template>
                 </tr>
               </thead>
               <tbody>
-                <template v-for="(m, i) in form.measurements" :key="i">
-                  <tr v-for="(lo, j) in m.lastikOlcumleri" :key="i + '-' + j" class="border-b border-slate-100">
-                    <td class="px-2 py-1">{{ m.tarih }}</td>
-                    <td class="px-2 py-1">{{ lo.pozisyon }}</td>
-                    <td class="px-2 py-1">{{ ortalamaDis(lo) }}</td>
-                    <td class="px-2 py-1">{{ lo.olculen_psi || '—' }}</td>
-                    <td class="px-2 py-1">{{ toplamKm(m, lo) }}</td>
-                  </tr>
-                </template>
+                <tr v-for="item in form.items" :key="item.pozisyon" class="border-b border-slate-100">
+                  <td class="px-2 py-1 border border-slate-200 font-medium">{{ item.pozisyon }}</td>
+                  <td class="px-2 py-1 border border-slate-200">{{ item.ebat || '—' }}</td>
+                  <td class="px-2 py-1 border border-slate-200">{{ item.desen || '—' }}</td>
+                  <td class="px-2 py-1 border border-slate-200">{{ item.hafta || '—' }}</td>
+                  <td class="px-2 py-1 border border-slate-200">{{ item.seri_numarasi || '—' }}</td>
+                  <template v-for="m in siraliOlcumTablosu" :key="item.pozisyon + '-' + m.sira">
+                    <td v-for="n in 4" :key="n" class="px-1 py-1 border border-slate-200 text-center">
+                      {{ lastikOlcumDegeri(m, item.pozisyon, 'dis', n) }}
+                    </td>
+                    <td class="px-1 py-1 border border-slate-200 text-center">{{ lastikOlcumDegeri(m, item.pozisyon, 'psi') }}</td>
+                  </template>
+                </tr>
+                <tr v-if="form.items.length === 0"><td colspan="5" class="text-slate-400 py-2 px-2">Henüz lastik satırı eklenmedi.</td></tr>
               </tbody>
             </table>
           </div>
@@ -330,7 +375,7 @@
           <div v-else-if="existingAttachments.length > 0" class="mb-3">
             <MultiFileUpload :model-value="[]" :existing="existingAttachments" :editable="false" />
           </div>
-          <a v-if="existingAttachments.length === 0 && form.filePath" :href="form.filePath" target="_blank" class="inline-block text-sm text-petlas-blue hover:underline mb-3">📎 Ek dosyayı görüntüle</a>
+          <a v-if="existingAttachments.length === 0 && form.filePath" :href="form.filePath" target="_blank" class="inline-block text-sm text-petlas-blue hover:underline mb-3">Ek dosyayı görüntüle</a>
         </section>
 
         <!-- Notlar: tarihe özel, tablo halinde -->
@@ -372,6 +417,11 @@
           <button type="submit" class="bg-petlas-red hover:bg-red-700 text-white font-semibold px-6 py-2 rounded transition-colors">
             {{ isNew ? 'Formu Kaydet' : 'Güncelle' }}
           </button>
+          <button v-if="!isNew" type="button" @click="sonlandirToggle"
+            class="text-sm px-3 py-2 rounded font-medium"
+            :class="form.durum === 'SONLANDIRILDI' ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'">
+            {{ form.durum === 'SONLANDIRILDI' ? 'Yeniden Aktifleştir' : 'Testi Sonlandır' }}
+          </button>
           <button v-if="!isNew" type="button" @click="deleteForm" class="text-petlas-red text-sm px-3 py-2">Sil</button>
         </div>
       </form>
@@ -397,6 +447,17 @@ const canEdit = computed(() => auth.can('CREATE_TIRE_TESTS'))
 const message = ref('')
 const messageIsError = ref(false)
 const showTable = ref(false)
+
+// Kağıt formu taklit eden matris tablo için: ölçümler sıra numarasına göre sıralı listelenir.
+const siraliOlcumTablosu = computed(() => [...form.measurements].sort((a, b) => (a.sira || 0) - (b.sira || 0)))
+
+// Belirli bir ölçümde, belirli bir pozisyondaki lastiğin diş (n. nokta) ya da PSI değerini bulur.
+function lastikOlcumDegeri(olcum, pozisyon, tur, n) {
+  const lo = (olcum.lastikOlcumleri || []).find(x => x.pozisyon === pozisyon)
+  if (!lo) return '—'
+  if (tur === 'psi') return lo.olculen_psi || '—'
+  return (lo.olculen_dis_derinlikleri && lo.olculen_dis_derinlikleri[n - 1]) || '—'
+}
 const newFiles = ref([])
 const existingAttachments = ref([])
 const karisimListesi = ref([])
@@ -419,8 +480,8 @@ const positionsByType = {
 const tumKodlar = ['S1','S2','S3','S4','S5','S6','S7','S8','S9','D1','D2','D3','D4','D5','D6','D7','D8','D9']
 
 const form = reactive({
-  aciklama: '', sirket: '', il: '', aracCinsi: '', plaka: '', aracNo: '', model: '', aracTipi: '', hafta: '', yukAgirligi: '',
-  onTarih: '', onKm: '', cekerTarih: '', cekerKm: '', dorseTarih: '', dorseKm: '',
+  aciklama: '', sirket: '', il: '', iletisimNo: '', aracCinsi: '', plaka: '', aracNo: '', model: '', aracTipi: '', hafta: '', yukAgirligi: '',
+  onTarih: '', onKm: '', cekerTarih: '', cekerKm: '', dorseTarih: '', dorseKm: '', durum: 'AKTIF',
   montajPozisyonu: [], items: [], karisimlar: [], measurements: [], filePath: '', notlarListesi: []
 })
 
@@ -465,6 +526,35 @@ async function fetchSuggestions(key, column, value) {
     const res = await api.get('/tire-tests/distinct-values', { params: { field: column, q: value } })
     suggestions[key] = res.data
   } catch { /* öneri yüklenemezse form yine de kullanılabilir */ }
+}
+
+// --- Lastik Bilgileri: Ebat / Desen otomatik tamamlama (tüm satırlar için ortak öneri kaynağı) ---
+const itemSuggestions = reactive({ ebat: [], desen: [] })
+let itemAutoTimer = null
+function onItemAutoInput(field, value) {
+  clearTimeout(itemAutoTimer)
+  itemAutoTimer = setTimeout(() => fetchItemSuggestions(field, value || ''), 200)
+}
+function onItemAutoFocus(field) {
+  fetchItemSuggestions(field, '')
+}
+async function fetchItemSuggestions(field, value) {
+  try {
+    const res = await api.get('/tire-tests/distinct-values', { params: { field, q: value } })
+    itemSuggestions[field] = res.data
+  } catch { /* öneri yüklenemezse form yine de kullanılabilir */ }
+}
+// Diş derinliği kutularında Enter'a basınca: 1→2→3→4 arası sırayla ilerler; 4.'ten sonra
+// Enter, SIRADAKİ lastiğin 1. diş kutusuna atlar (PSI bu zincirin dışındadır, ayrı girilir).
+function onDisEnter(measurementIndex, tireIndex, n) {
+  let hedefId
+  if (n < 4) {
+    hedefId = `dis-${measurementIndex}-${tireIndex}-${n + 1}`
+  } else {
+    hedefId = `dis-${measurementIndex}-${tireIndex + 1}-1`
+  }
+  const hedefEl = document.getElementById(hedefId)
+  if (hedefEl) hedefEl.focus()
 }
 
 const solKodlar = computed(() => {
@@ -658,7 +748,7 @@ const aiYorumu = computed(() => {
         const durum = oran > 0.7 ? 'HIZLI aşınma (kontrol önerilir)' : oran > 0.4 ? 'normal aşınma aralığında' : 'düşük/yavaş aşınma'
         cumleler.push(`Yaklaşık ${oran.toFixed(2)} mm/1000km aşınma oranı — bu ${durum}.`)
       }
-      if (disSon <= 3) cumleler.push('⚠️ Ortalama diş derinliği kritik seviyeye (≤3mm) yaklaşmış/ulaşmış, lastik değişimi değerlendirilmeli.')
+      if (disSon <= 3) cumleler.push('UYARI: Ortalama diş derinliği kritik seviyeye (≤3mm) yaklaşmış/ulaşmış, lastik değişimi değerlendirilmeli.')
     } else if (fark < 0) {
       cumleler.push('Diş derinliği ölçümünde artış görünüyor, veri girişini kontrol edin.')
     }
@@ -681,26 +771,84 @@ const aiYorumu = computed(() => {
 
 // --- Excel export ---
 function downloadExcel() {
-  const wb = XLSX.utils.book_new()
-  const itemsSheet = XLSX.utils.json_to_sheet(form.items.map(i => ({
-    Pozisyon: i.pozisyon, 'Lastik ID': i.lastik_id, Ebat: i.ebat, Desen: i.desen,
-    Hafta: i.hafta, 'Seri No': i.seri_numarasi, 'Orj. Diş Derinliği': i.orjDisDerinligi
-  })))
-  XLSX.utils.book_append_sheet(wb, itemsSheet, 'Lastikler')
+  const ws = {}
 
-  const olcumSatirlari = []
-  form.measurements.forEach(m => {
-    (m.lastikOlcumleri || []).forEach(lo => {
-      olcumSatirlari.push({
-        'Tarih': m.tarih, Pozisyon: lo.pozisyon, 'Ortalama Diş Derinliği': ortalamaDis(lo),
-        'PSI': lo.olculen_psi, 'Toplam KM': toplamKm(m, lo)
-      })
-    })
+  // --- 1) ÜST BÖLÜM: Genel Bilgiler ---
+  const ozellikMetni = (form.karisimlar || [])
+    .filter(k => k.ad)
+    .map(k => `${k.ad}${k.pozisyonlar && k.pozisyonlar.length ? ' (' + k.pozisyonlar.join(', ') + ')' : ''}`)
+    .join('; ') || '-'
+
+  const genelBilgiler = [
+    ['LASTİK TEST FORMU'],
+    [],
+    ['Açıklama', form.aciklama || '-'],
+    ['Şirket', form.sirket || '-'],
+    ['İl', form.il || '-'],
+    ['İletişim Numarası', form.iletisimNo || '-'],
+    ['Araç Cinsi', form.aracCinsi || '-'],
+    ['Plaka', form.plaka || '-'],
+    ['Araç No', form.aracNo || '-'],
+    ['Model', form.model || '-'],
+    ['Araç Tipi', form.aracTipi || '-'],
+    ['Hafta', form.hafta || '-'],
+    ['Yük Ağırlığı', form.yukAgirligi || '-'],
+    ['Özellikler', ozellikMetni],
+    ['Ön Takılma Tarihi', form.onTarih || '-', 'Ön Başlangıç KM', form.onKm || '-'],
+    ['Çeker Takılma Tarihi', form.cekerTarih || '-', 'Çeker Başlangıç KM', form.cekerKm || '-'],
+    ['Dorse Takılma Tarihi', form.dorseTarih || '-', 'Dorse Başlangıç KM', form.dorseKm || '-'],
+    ['Durum', form.durum === 'SONLANDIRILDI' ? 'Sonlandırıldı' : 'Aktif'],
+    []
+  ]
+  XLSX.utils.sheet_add_aoa(ws, genelBilgiler, { origin: { r: 0, c: 0 } })
+
+  // --- 2) ORTA BÖLÜM: Ekrandaki "Tablolaştır" matrisinin birebir aynısı ---
+  const matrisBaslangicSatiri = genelBilgiler.length + 1
+  const olcumler = siraliOlcumTablosu.value
+  const sabitSutunlar = ['Pozisyon', 'Ebat', 'Desen', 'Hafta', 'Seri No']
+
+  const ustBaslik = [...sabitSutunlar]
+  const altBaslik = ['', '', '', '', '']
+  const merges = []
+
+  olcumler.forEach((m, i) => {
+    const durumMetni = m.olcumDurumu === 'SICAK' ? 'Sıcak' : (m.olcumDurumu === 'SOGUK' ? 'Soğuk' : '')
+    const baslikMetni = `${m.sira}. Ölçüm${m.tarih ? ' — ' + m.tarih : ''}${m.olcenKisi ? ' (Ölçen: ' + m.olcenKisi + ')' : ''}${durumMetni ? ' [' + durumMetni + ']' : ''}`
+    const baslangicSutun = sabitSutunlar.length + i * 5
+    ustBaslik.push(baslikMetni, '', '', '', '')
+    altBaslik.push('Diş 1', 'Diş 2', 'Diş 3', 'Diş 4', 'PSİ')
+    merges.push({ s: { r: matrisBaslangicSatiri, c: baslangicSutun }, e: { r: matrisBaslangicSatiri, c: baslangicSutun + 4 } })
   })
-  const measurementsSheet = XLSX.utils.json_to_sheet(olcumSatirlari)
-  XLSX.utils.book_append_sheet(wb, measurementsSheet, 'Ölçümler')
+  if (olcumler.length === 0) ustBaslik.push('Henüz ölçüm yok')
 
-  const dosyaAdi = (form.aciklama || 'lastik-test-formu').replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ\- ]/g, '').slice(0, 60)
+  const matrisSatirlari = [ustBaslik, altBaslik]
+  form.items.forEach(item => {
+    const satir = [item.pozisyon || '', item.ebat || '', item.desen || '', item.hafta || '', item.seri_numarasi || '']
+    olcumler.forEach(m => {
+      for (let n = 1; n <= 4; n++) satir.push(lastikOlcumDegeri(m, item.pozisyon, 'dis', n))
+      satir.push(lastikOlcumDegeri(m, item.pozisyon, 'psi'))
+    })
+    matrisSatirlari.push(satir)
+  })
+  XLSX.utils.sheet_add_aoa(ws, matrisSatirlari, { origin: { r: matrisBaslangicSatiri, c: 0 } })
+
+  // --- 3) SAĞ BÖLÜM: Notlar (bozulmadan, her not kendi satırında) ---
+  const toplamMatrisSutunu = sabitSutunlar.length + Math.max(olcumler.length, 1) * 5
+  const notlarBaslangicSutunu = toplamMatrisSutunu + 2
+  const notlarBloku = [['Not Tarihi', 'Not İçeriği']]
+  form.notlarListesi.filter(n => n.icerik).forEach(n => {
+    notlarBloku.push([n.tarih || 'Tarihsiz', n.icerik])
+  })
+  if (notlarBloku.length === 1) notlarBloku.push(['-', 'Henüz not eklenmedi.'])
+  XLSX.utils.sheet_add_aoa(ws, notlarBloku, { origin: { r: matrisBaslangicSatiri, c: notlarBaslangicSutunu } })
+
+  ws['!merges'] = merges
+  ws['!cols'] = Array.from({ length: notlarBaslangicSutunu + 2 }, () => ({ wch: 15 }))
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Lastik Test Formu')
+
+  const dosyaAdi = (form.plaka || form.aciklama || 'lastik-test-formu').replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ\- ]/g, '').slice(0, 60)
   XLSX.writeFile(wb, `${dosyaAdi}.xlsx`)
 }
 
@@ -710,6 +858,7 @@ async function loadExisting() {
   form.aciklama = d.aciklama
   form.sirket = d.sirket
   form.il = d.il || ''
+  form.iletisimNo = d.iletisim_no || ''
   form.aracCinsi = d.arac_cinsi
   form.plaka = d.plaka
   form.aracNo = d.arac_no
@@ -754,6 +903,7 @@ async function loadExisting() {
   })
 
   form.filePath = d.file_path || ''
+  form.durum = d.durum || 'AKTIF'
 
   // Notlar backend'de tek bir metin (TEXT) sütununda saklanıyor; yeni kayıtlar JSON dizi
   // olarak yazılır ([{tarih, icerik}]). Eski kayıtlarda düz metin olabilir, geriye dönük uyumluluk sağlanır.
@@ -808,6 +958,19 @@ async function submitForm() {
   } catch (err) {
     message.value = err.response?.data?.error || 'Bir hata oluştu.'
     messageIsError.value = true
+  }
+}
+
+async function sonlandirToggle() {
+  const soru = form.durum === 'SONLANDIRILDI'
+    ? 'Bu testi yeniden aktif hale getirmek istediğinize emin misiniz?'
+    : 'Bu testi sonlandırmak istediğinize emin misiniz? Kayıt silinmez, sadece "şu an takılı" sayaçlarından düşer.'
+  if (!confirm(soru)) return
+  try {
+    const res = await api.patch(`/tire-tests/${route.params.id}/sonlandir`)
+    form.durum = res.data.durum
+  } catch (err) {
+    alert(err.response?.data?.error || 'İşlem başarısız.')
   }
 }
 

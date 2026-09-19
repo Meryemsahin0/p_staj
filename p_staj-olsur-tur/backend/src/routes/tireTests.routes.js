@@ -12,6 +12,7 @@ router.get('/:id', authenticate, requirePermission('VIEW_TIRE_TESTS'), tireTests
 // Ekleme, düzenleme, silme: CREATE_TIRE_TESTS yetkisi olan roller
 router.post('/', authenticate, requirePermission('CREATE_TIRE_TESTS'), tireTests.create);
 router.put('/:id', authenticate, requirePermission('CREATE_TIRE_TESTS'), tireTests.update);
+router.patch('/:id/sonlandir', authenticate, requirePermission('CREATE_TIRE_TESTS'), tireTests.sonlandir);
 router.delete('/:id', authenticate, requirePermission('CREATE_TIRE_TESTS'), tireTests.remove);
 
 module.exports = router;

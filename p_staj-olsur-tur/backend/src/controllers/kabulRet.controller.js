@@ -2,6 +2,25 @@ const pool = require('../config/db');
 const logAction = require('../middleware/auditLog');
 const { saveAttachments, getAttachments } = require('../utils/attachments');
 
+function turkceKucukHarf(str) {
+  // Aynı eşlemeyi JS tarafında da uyguluyoruz ki iki taraf (parametre ve SQL sütunu) birebir tutsun.
+  return String(str)
+    .replace(/İ/g, 'i').replace(/I/g, 'ı').replace(/Ş/g, 'ş').replace(/Ğ/g, 'ğ')
+    .replace(/Ü/g, 'ü').replace(/Ö/g, 'ö').replace(/Ç/g, 'ç')
+    .toLowerCase();
+}
+function tl(ifade) {
+  // Veritabanı sunucusunun dil ayarına (locale) bağlı kalmadan, Türkçe büyük harfleri
+  // kendimiz küçük harfe çeviriyoruz. Aksi halde PostgreSQL'in LOWER() fonksiyonu
+  // sunucu locale'ine göre Ö/Ş/Ğ/Ü/Ç gibi harfleri düzgün küçültmeyebiliyor.
+  let e = ifade;
+  const eslesmeler = [['İ','i'], ['I','ı'], ['Ş','ş'], ['Ğ','ğ'], ['Ü','ü'], ['Ö','ö'], ['Ç','ç']];
+  for (const [buyuk, kucuk] of eslesmeler) {
+    e = `REPLACE(${e}, '${buyuk}', '${kucuk}')`;
+  }
+  return `LOWER(${e})`;
+}
+
 const GECERLI_KARARLAR = ['BEKLEMEDE', 'KABUL', 'RET'];
 
 // GET /api/v1/kabul-ret/search?q=...&hataKodu=...&karar=...
@@ -12,12 +31,12 @@ async function search(req, res) {
                  FROM kabul_ret WHERE 1=1`;
     const params = [];
     if (q) {
-      params.push(`%${q.toLowerCase()}%`);
-      query += ` AND (LOWER(lastik_seri_no) LIKE $${params.length} OR LOWER(musteri) LIKE $${params.length} OR LOWER(aciklama) LIKE $${params.length})`;
+      params.push(`%${turkceKucukHarf(q)}%`);
+      query += ` AND (${tl('lastik_seri_no')} LIKE $${params.length} OR ${tl('musteri')} LIKE $${params.length} OR ${tl('aciklama')} LIKE $${params.length})`;
     }
     if (hataKodu) {
-      params.push(`%${hataKodu.toLowerCase()}%`);
-      query += ` AND LOWER(hata_kodu) LIKE $${params.length}`;
+      params.push(`%${turkceKucukHarf(hataKodu)}%`);
+      query += ` AND ${tl('hata_kodu')} LIKE $${params.length}`;
     }
     if (karar) {
       params.push(karar);

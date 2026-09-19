@@ -18,6 +18,7 @@ const roleRoutes = require('./routes/roles.routes');
 const statsRoutes = require('./routes/stats.routes');
 const attachmentRoutes = require('./routes/attachments.routes');
 const karisimRoutes = require('./routes/karisim.routes');
+const haberlerRoutes = require('./routes/haberler.routes');
 const path = require('path');
 
 const app = express();
@@ -54,6 +55,7 @@ app.use('/api/v1/roles', roleRoutes);
 app.use('/api/v1/stats', statsRoutes);
 app.use('/api/v1/attachments', attachmentRoutes);
 app.use('/api/v1/karisimlar', karisimRoutes);
+app.use('/api/v1/haberler', haberlerRoutes);
 
 // Yüklenen PDF/görsel dosyalarına doğrudan erişim (görüntüleme/indirme için)
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));

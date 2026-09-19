@@ -2,6 +2,27 @@ const pool = require('../config/db');
 const logAction = require('../middleware/auditLog');
 const { saveAttachments, getAttachments } = require('../utils/attachments');
 
+// JavaScript'in toLowerCase()'i Türkçe "İ" harfini yanlış çevirdiği için (İ → i̇, i değil),
+// "DİĞER" gibi kelimeler "diğer" ile eşleşmeyebiliyor. Bu yardımcılar bunu düzeltir.
+function turkceKucukHarf(str) {
+  // Aynı eşlemeyi JS tarafında da uyguluyoruz ki iki taraf (parametre ve SQL sütunu) birebir tutsun.
+  return String(str)
+    .replace(/İ/g, 'i').replace(/I/g, 'ı').replace(/Ş/g, 'ş').replace(/Ğ/g, 'ğ')
+    .replace(/Ü/g, 'ü').replace(/Ö/g, 'ö').replace(/Ç/g, 'ç')
+    .toLowerCase();
+}
+function tl(ifade) {
+  // Veritabanı sunucusunun dil ayarına (locale) bağlı kalmadan, Türkçe büyük harfleri
+  // kendimiz küçük harfe çeviriyoruz. Aksi halde PostgreSQL'in LOWER() fonksiyonu
+  // sunucu locale'ine göre Ö/Ş/Ğ/Ü/Ç gibi harfleri düzgün küçültmeyebiliyor.
+  let e = ifade;
+  const eslesmeler = [['İ','i'], ['I','ı'], ['Ş','ş'], ['Ğ','ğ'], ['Ü','ü'], ['Ö','ö'], ['Ç','ç']];
+  for (const [buyuk, kucuk] of eslesmeler) {
+    e = `REPLACE(${e}, '${buyuk}', '${kucuk}')`;
+  }
+  return `LOWER(${e})`;
+}
+
 const GECERLI_DEPARTMANLAR = ['GENEL', 'SAHA_MUHENDISLIGI', 'TEKNIK_SERVIS'];
 
 // Bir belgeyi kullanıcının görüp göremeyeceğini kontrol eder.
@@ -28,16 +49,16 @@ async function search(req, res) {
     const params = [];
 
     if (q) {
-      params.push(`%${q.toLowerCase()}%`);
-      query += ` AND (LOWER(g.title) LIKE $${params.length} OR LOWER(g.keywords) LIKE $${params.length} OR LOWER(g.content) LIKE $${params.length})`;
+      params.push(`%${turkceKucukHarf(q)}%`);
+      query += ` AND (${tl('g.title')} LIKE $${params.length} OR ${tl('g.keywords')} LIKE $${params.length} OR ${tl('g.content')} LIKE $${params.length})`;
     }
     if (category) {
       params.push(category);
       query += ` AND c.category_name = $${params.length}`;
     }
     if (hataKodu) {
-      params.push(`%${hataKodu.toLowerCase()}%`);
-      query += ` AND LOWER(g.keywords) LIKE $${params.length}`;
+      params.push(`%${turkceKucukHarf(hataKodu)}%`);
+      query += ` AND ${tl('g.keywords')} LIKE $${params.length}`;
     }
     query += ' ORDER BY g.created_at DESC LIMIT 50';
 
